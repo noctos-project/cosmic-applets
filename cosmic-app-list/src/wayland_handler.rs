@@ -493,8 +493,7 @@ impl AppData {
             capturer: self.screencopy_state.capturer().clone(),
         };
         std::thread::spawn(move || {
-            let name = c"app-list-screencopy";
-            let Ok(fd) = rustix::fs::memfd_create(name, rustix::fs::MemfdFlags::CLOEXEC) else {
+            let Ok(fd) = anonymous_shm_fd() else {
                 tracing::error!("Failed to get fd for capture");
                 return;
             };
@@ -728,3 +727,38 @@ cctk::delegate_screencopy!(AppData);
 sctk::delegate_activation!(AppData, ExecRequestData);
 
 sctk::delegate_output!(AppData);
+
+/// An anonymous, growable shared-memory file for a screencopy buffer.
+#[cfg(any(target_os = "linux", target_os = "android", target_os = "freebsd"))]
+fn anonymous_shm_fd() -> rustix::io::Result<std::os::fd::OwnedFd> {
+    rustix::fs::memfd_create(c"app-list-screencopy", rustix::fs::MemfdFlags::CLOEXEC)
+}
+
+/// An anonymous, growable shared-memory file for a screencopy buffer.
+///
+/// Without `memfd_create`, a POSIX shared-memory object is created under a
+/// random name and unlinked at once, leaving only the descriptor.
+#[cfg(not(any(target_os = "linux", target_os = "android", target_os = "freebsd")))]
+fn anonymous_shm_fd() -> rustix::io::Result<std::os::fd::OwnedFd> {
+    use rustix::{
+        io::Errno,
+        shm::{self, Mode, OFlags},
+    };
+
+    loop {
+        // POSIX requires the leading slash.
+        let name = format!("/app-list-screencopy-{:016x}", fastrand::u64(..));
+        match shm::open(
+            name.as_str(),
+            OFlags::RDWR | OFlags::CREATE | OFlags::EXCL,
+            Mode::RUSR | Mode::WUSR,
+        ) {
+            Ok(fd) => {
+                let _ = shm::unlink(name.as_str());
+                return Ok(fd);
+            }
+            Err(Errno::EXIST) => continue,
+            Err(err) => return Err(err),
+        }
+    }
+}
