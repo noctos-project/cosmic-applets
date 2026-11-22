@@ -9,7 +9,7 @@ anyhow.workspace = true
 i18n-embed-fl.workspace = true
 i18n-embed.workspace = true
 image = { version = "0.25.9", default-features = false }
-libcosmic.workspace = true
+libcosmic = { workspace = true, features = ["desktop"] }
 memmap2 = "0.9.10"
 rust-embed.workspace = true
 rustix.workspace = true

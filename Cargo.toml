@@ -149,3 +149,8 @@ iced_tiny_skia = { path = "../libcosmic/iced/tiny_skia" }
 iced_wgpu = { path = "../libcosmic/iced/wgpu" }
 iced_widget = { path = "../libcosmic/iced/widget" }
 iced_winit = { path = "../libcosmic/iced/winit" }
+
+# NoctOS: the fork's cosmic-comp-config makes libinput optional (upstream
+# links it, and with it libudev, unconditionally).
+[patch."https://github.com/pop-os/cosmic-comp.git"]
+cosmic-comp-config = { path = "../cosmic-comp/cosmic-comp-config" }
